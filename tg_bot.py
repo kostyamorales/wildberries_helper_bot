@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 import os
+import logging
 
 from telegram import InlineKeyboardButton
 from telegram import InlineKeyboardMarkup
@@ -8,6 +9,13 @@ from telegram.ext import Updater
 from telegram.ext import CommandHandler
 from telegram.ext import CallbackQueryHandler
 from telegram.ext import ConversationHandler
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+)
+
+logger = logging.getLogger(__name__)
 
 FIRST = range(1)
 
