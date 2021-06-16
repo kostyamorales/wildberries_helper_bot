@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import logging
+import utils
 
 logging.basicConfig(
     level=logging.INFO,
@@ -10,7 +11,7 @@ logger = logging.getLogger('wb')
 
 
 def get_url(article):
-    return f'https://www.wildberries.ru/catalog/{str(article)}/detail.aspx'
+    return f'https://www.wildberries.ru/catalog/{article}/detail.aspx'
 
 
 def get_html(url):
@@ -30,14 +31,16 @@ def get_data(html):
     return soup
 
 
-def get_brand_and_name(soup):
+def get_brand_and_name(article):
+    soup = get_data(get_html(get_url(article)))
     brand_and_name = soup.select_one('div.brand-and-name').text.strip()
     if not brand_and_name:
         logger.error('no brand_and_name block')
     return brand_and_name
 
 
-def get_price(soup):
+def get_price(article):
+    soup = get_data(get_html(get_url(article)))
     price = soup.select_one('div.inner-price')
     if not price:
         return
@@ -46,20 +49,11 @@ def get_price(soup):
     return final_price
 
 
-def get_sizes(soup):
+def get_sizes(article):
+    soup = get_data(get_html(get_url(article)))
     block_sizes = soup.select('div.size-list.j-size-list label')
     if not block_sizes:
         logger.error('no block_sizes')
         return
-    sizes = []
-    for block_size in block_sizes:
-        s = str(block_size.select('span'))
-        s_value = s.replace('[<span>', '').replace('</span>]', '')
-        # на случай если размеры у товара не предусмотрены
-        if s_value == '0':
-            return
-        flag = True
-        if 'disabled' in str(block_size):
-            flag = False
-        sizes.append((s_value, flag))
+    sizes = utils.get_thing_sizes(block_sizes)
     return sizes
