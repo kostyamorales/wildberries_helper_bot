@@ -3,6 +3,8 @@ from requests.exceptions import HTTPError
 
 
 def validate_article(article):
+    if not article.isdigit():
+        return None
     url = f'https://www.wildberries.ru/catalog/{(article)}/detail.aspx'
     try:
         parser.get_html(url)

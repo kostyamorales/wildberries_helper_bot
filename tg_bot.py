@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 import os
 import logging
 import utils
+import parser
 
 from telegram import InlineKeyboardButton
 from telegram import InlineKeyboardMarkup
@@ -21,8 +22,7 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-FIRST, SECOND, THIRD, FOURTH = range(4)
-
+FIRST, TP2, TP3, TP4, TE2, TE3 = range(6)
 # TP - track_price
 # TE - track existence
 # SI - show_items
@@ -41,9 +41,9 @@ def get_base_inline_keyboard():
     return InlineKeyboardMarkup(keyboard)
 
 
-def get_keyboard_cancel():
+def get_keyboard_cancel(button_name):
     """ Получаем клавиатуру перехода в главное меню. """
-    keyboard = [[InlineKeyboardButton("Отмена", callback_data=str(START))]]
+    keyboard = [[InlineKeyboardButton(button_name, callback_data=str(START))]]
     return InlineKeyboardMarkup(keyboard)
 
 
@@ -72,67 +72,62 @@ def track_price(update, context):
     query.edit_message_text(
         text="Введите артикул",
     )
-    return SECOND
+    return TP2
 
 
 def ask_size_tp(update, context):
     """ Проверяем товар по артикулу и наличие размеров. """
     # проверяем артикул
-    article = validate_article(article=update.message.text)
+    article = validate_article(update.message.text)
     if article is None:
         update.message.reply_text(
             text="Пожалуйста введите корректный артикул или нажмите 'Отмена'",
-            reply_markup=get_keyboard_cancel(),
+            reply_markup=get_keyboard_cancel("Отмена"),
         )
-        return SECOND
+        return TP2
     # проверяем, что товар в продаже
     item_price = validate_item_price(article)
     if item_price is None:
-        keyboard = [
-            [
-                InlineKeyboardButton("Отследить", callback_data=str(TE)),
-                InlineKeyboardButton("В начало", callback_data=str(START)),
-            ],
-        ]
         update.message.reply_text(
-            text="Нет в продаже. Отслеживать появление?",
-            reply_markup=InlineKeyboardMarkup(keyboard),
+            text="Нет в продаже. Можете отследить появление через 'Главное меню'",
+            reply_markup=get_keyboard_cancel("Главное меню"),
         )
-        return SECOND
+        return TP2
     context.user_data[1] = item_price
     # проверяем существуют ли у товара размеры
     sizes = parser.get_sizes(article)
     if sizes:
         context.user_data[2] = sizes
         update.message.reply_text("Укажите размер")
-        return THIRD
+        return TP3
     update.message.reply_text("Введите цену")
-    return FOURTH
+    return TP4
 
 
 def ask_price_tp(update, context):
-    """ Сверяем размер товара с размером, переданным пользователем. """
+    """ Сверяем размер товара с размером, переданным пользователем.
+        Спрашиваем цену, при достижении которой оповещать.
+    """
     size_value = update.message.text
     size = utils.get_size_from_user(size_value)
     sizes = context.user_data[2]
     if size not in sizes:
         update.message.reply_text(
             text="Пожалуйста введите корректный размер или нажмите 'Отмена'",
-            reply_markup=get_keyboard_cancel()
+            reply_markup=get_keyboard_cancel("Отмена")
         )
-        return THIRD
+        return TP3
     # если этого размера нет
     if not sizes[size]:
-        keyboard = [[InlineKeyboardButton("Главное меню", callback_data=str(START))]]
         update.message.reply_text(
             text="Сейчас этого размера нет. "
                  "Можете отследить появление через"
-                 " главное меню или выбрать другой размер",
-            reply_markup=InlineKeyboardMarkup(keyboard)
+                 " 'Главное меню' или выбрать другой размер",
+            reply_markup=get_keyboard_cancel("Главное меню"),
         )
-        return THIRD
+        return TP3
     update.message.reply_text("Введите цену")
-    return FOURTH
+    return TP4
 
 
 def get_info_tp(update, context):
@@ -147,9 +142,9 @@ def get_info_tp(update, context):
     if not correct_price:
         update.message.reply_text(
             text="Пожалуйста введите корректную цену или нажмите 'Отмена'",
-            reply_markup=get_keyboard_cancel(),
+            reply_markup=get_keyboard_cancel("Отмена"),
         )
-        return FOURTH
+        return TP4
     # TODO здесь нужно сохранить в БД
     update.message.reply_text(
         text="Товар добавлен в ваш список",
@@ -159,8 +154,94 @@ def get_info_tp(update, context):
 
 
 def track_existence(update, context):
-    """ Отслеживаем наличие товара. """
-    pass
+    """ Отслеживаем появление товара. """
+    query = update.callback_query
+    query.answer()
+    query.edit_message_text(
+        text="Введите артикул",
+    )
+    return TE2
+
+
+def ask_size_te(update, context):
+    """ Проверяем товар по артикулу и наличие размеров. """
+    # получить артикул
+    # проверить полученные данные
+    article = validate_article(update.message.text)
+    # если артикул не существует
+    if article is None:
+        update.message.reply_text(
+            text="Пожалуйста введите корректный артикул или нажмите 'Отмена'",
+            reply_markup=get_keyboard_cancel("Отмена"),
+        )
+        return TE2
+    # проверяем с размерами или без
+    sizes = parser.get_sizes(article)
+    # проверяем наличие товара
+    item_price = validate_item_price(article)
+    # если в наличии
+    if item_price:
+        # если с размерами
+        if sizes:
+            # если все размеры в наличии
+            sizes_flag = [sizes[element] for element in sizes]
+            if all(sizes_flag):
+                update.message.reply_text(
+                    text="Товар со всеми размерами в наличии. Перейдите в 'Главное меню'",
+                    reply_markup=get_keyboard_cancel("Главное меню"),
+                )
+                return TE2
+            # если не все размеры в наличии
+            context.user_data[1] = sizes
+            update.message.reply_text("Укажите размер")
+            return TE3
+        # если без размеров
+        update.message.reply_text(
+            text="Товар есть в наличии. Перейдите в 'Главное меню'",
+            reply_markup=get_keyboard_cancel("Главное меню"),
+        )
+        return TE2
+    # если товара нет в наличии
+    # если с размерами
+    if sizes:
+        context.user_data[1] = sizes
+        update.message.reply_text("Укажите размер")
+        return TE3
+    # если без размеров
+    # TODO здесь нужно сохранить в БД
+    update.message.reply_text(
+        text="Товар добавлен в ваш список",
+        reply_markup=get_base_inline_keyboard(),
+    )
+    return FIRST
+
+
+def get_info_te(update, context):
+    """ Собираем воедино полученные данные, сохраняем в БД. """
+    size_value = update.message.text
+    size = utils.get_size_from_user(size_value)
+    sizes = context.user_data[1]
+    # если введенное значение не корректно
+    if size not in sizes:
+        update.message.reply_text(
+            text="Пожалуйста введите корректный размер или нажмите 'Отмена'",
+            reply_markup=get_keyboard_cancel("Отмена")
+        )
+        return TE3
+    # если такой размер есть в наличии
+    if sizes[size]:
+        update.message.reply_text(
+            text="Размер есть в наличии. Перейдите в 'Главное меню'",
+            reply_markup=get_keyboard_cancel("Главное меню"),
+        )
+        return TE3
+    # если запрашиваемого  размера нет
+    # TODO здесь нужно сохранить в БД
+    update.message.reply_text(
+        text="Товар добавлен в ваш список",
+        reply_markup=get_base_inline_keyboard(),
+    )
+    return FIRST
 
 
 def show_items(update, context):
@@ -185,18 +266,28 @@ def main():
                 CallbackQueryHandler(track_price, pattern='^' + str(TP) + '$'),
                 CallbackQueryHandler(track_existence, pattern='^' + str(TE) + '$'),
                 CallbackQueryHandler(show_items, pattern='^' + str(SI) + '$'),
-                CallbackQueryHandler(delete_item, pattern='^' + str(DEL) + '$'),
+                # CallbackQueryHandler(delete_item, pattern='^' + str(DEL) + '$'),
             ],
-            SECOND: [
+            # TP - track price
+            TP2: [
                 MessageHandler(Filters.text, ask_size_tp, pass_chat_data=True),
                 CallbackQueryHandler(start_over, pattern='^' + str(START) + '$'),
             ],
-            THIRD: [
+            TP3: [
                 MessageHandler(Filters.text, ask_price_tp, pass_chat_data=True),
                 CallbackQueryHandler(start_over, pattern='^' + str(START) + '$'),
             ],
-            FOURTH: [
+            TP4: [
                 MessageHandler(Filters.text, get_info_tp, pass_chat_data=True),
+                CallbackQueryHandler(start_over, pattern='^' + str(START) + '$'),
+            ],
+            # TE - track existence
+            TE2: [
+                MessageHandler(Filters.text, ask_size_te, pass_chat_data=True),
+                CallbackQueryHandler(start_over, pattern='^' + str(START) + '$'),
+            ],
+            TE3: [
+                MessageHandler(Filters.text, get_info_te, pass_chat_data=True),
                 CallbackQueryHandler(start_over, pattern='^' + str(START) + '$'),
             ],
         },
