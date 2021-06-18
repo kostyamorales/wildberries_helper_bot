@@ -1,12 +1,3 @@
-def get_size_from_user(value):
-    size = ''
-    for i in value:
-        if i.isalpha():
-            i = i.lower()
-        size += i
-    return size
-
-
 def get_thing_sizes(block_sizes):
     sizes = {}
     for block in block_sizes:
