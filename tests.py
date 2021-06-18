@@ -13,7 +13,12 @@ class ValidatorsTestCase(TestCase):
     def test_validate_on_sale(self):
         # получаем уже проверенные артикулы после validate_article_tp
         self.assertEqual(validate_item_price('7777'), None)  # нет в наличии
-        self.assertEqual(validate_item_price('29242231'), 1077)  # в наличии
+        self.assertEqual(validate_item_price('29242231'), 923)  # в наличии
 
     def test_validate_price(self):
         self.assertEqual(validate_price(1000, '900'), True)
+
+    def test_validate_item_id(self):
+        self.assertEqual(validate_item_id(534732488, '77'), None)
+        self.assertEqual(validate_item_id(534732488, '7'), 7)
+        self.assertEqual(validate_item_id(534732488, 'fsfg'), None)

@@ -1,4 +1,5 @@
 import parser
+from tg_bot import get_items_id
 from requests.exceptions import HTTPError
 
 
@@ -26,3 +27,14 @@ def validate_price(item_price, price):
     if int(price) >= item_price:
         return False
     return True
+
+
+def validate_item_id(external_id, answer):
+    try:
+        item_id = int(answer)
+    except ValueError:
+        return None
+    items_id = [item[0] for item in get_items_id(external_id)]
+    if item_id not in items_id:
+        return None
+    return item_id

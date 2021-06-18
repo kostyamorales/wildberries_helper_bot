@@ -23,7 +23,7 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-FIRST, TP2, TP3, TP4, TE2, TE3 = range(6)
+FIRST, TP2, TP3, TP4, TE2, TE3, DEL2 = range(7)
 # TP - track_price
 # TE - track existence
 # SI - show_items
@@ -127,6 +127,27 @@ def get_items(external_id):
         """, (external_id,)).fetchall()
     except sqlite3.OperationalError:
         return
+
+
+def get_items_id(external_id):
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        return c.execute("""
+        SELECT id
+        FROM item
+        WHERE profile == ?
+        """, (external_id,)).fetchall()
+    except sqlite3.OperationalError:
+        return
+
+
+def delete_entry(record_id):
+    """ Удаляет запись из БД """
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("DELETE FROM item WHERE id == ?", (record_id,))
+    conn.commit()
 
 
 def get_base_inline_keyboard():
@@ -435,7 +456,29 @@ def delete_item(update, context):
     """ Удаляем товар из БД. """
     query = update.callback_query
     query.answer()
-    query.message.reply_text("Здесь будет произведено удаление")
+    query.edit_message_text(
+        text="Введите ID товара",
+        reply_markup=get_keyboard_cancel("Главное меню"),
+    )
+    return DEL2
+
+
+def delete(update, context):
+    answer = update.message.text
+    external_id = update.message.chat_id
+    record_id = validate_item_id(external_id, answer)
+    if record_id is None:
+        update.message.reply_text(
+            text="Введите пожалуйста корректный ID или перейдите в 'Главное меню'",
+            reply_markup=get_keyboard_cancel("Главное меню"),
+        )
+        return DEL2
+    delete_entry(record_id)
+    update.message.reply_text(
+        text="Запись успешно удалена",
+        reply_markup=get_keyboard_cancel("Главное меню")
+    )
+    return FIRST
 
 
 def main():
@@ -474,6 +517,11 @@ def main():
             ],
             TE3: [
                 MessageHandler(Filters.text, get_info_te, pass_chat_data=True),
+                CallbackQueryHandler(start_over, pattern='^' + str(START) + '$'),
+            ],
+            # DEL - delete item
+            DEL2: [
+                MessageHandler(Filters.text, delete, pass_chat_data=True),
                 CallbackQueryHandler(start_over, pattern='^' + str(START) + '$'),
             ],
         },
