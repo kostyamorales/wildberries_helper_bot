@@ -77,6 +77,43 @@ def init_db(force: bool = False):
     conn.commit()
 
 
+def get_user_record(external_id):
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        return c.execute("""
+        SELECT external_id
+        FROM user
+        WHERE external_id == ?
+        """, (external_id, )).fetchall()
+    except sqlite3.OperationalError:
+        return
+
+
+def add_user_record(external_id, user_name):
+    """ Делает запись в user в БД
+    """
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("""
+    INSERT INTO user (external_id, user_name)
+    VALUES (?, ?)
+    """, (external_id, user_name))
+    conn.commit()
+
+
+def add_item_record(profile, article, item_size, item_name, url, existence, user_price):
+    """ Делает запись в item в БД
+    """
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("""
+    INSERT INTO item (profile, article, item_size, item_name, url, existence, user_price)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (profile, article, item_size, item_name, url, existence, user_price))
+    conn.commit()
+
+
 def get_base_inline_keyboard():
     """ Получаем базовую клавиатуру для главного меню. """
     keyboard = [
