@@ -209,7 +209,7 @@ def ask_size_tp(update, context):
     article = validate_article(update.message.text)
     if article is None:
         update.message.reply_text(
-            text="Пожалуйста введите корректный артикул или нажмите 'Отмена'",
+            text='Пожалуйста введите корректный артикул или нажмите "Отмена"',
             reply_markup=get_keyboard_cancel("Отмена"),
         )
         return TP2
@@ -218,7 +218,8 @@ def ask_size_tp(update, context):
     item_price = validate_item_price(article)
     if item_price is None:
         update.message.reply_text(
-            text="Нет в продаже. Можете отследить появление через 'Главное меню'",
+            text='Нет в продаже. Пожалуйста введите корректный артикул или '
+                 'можете отследить появление этого товара через "Главное меню"',
             reply_markup=get_keyboard_cancel("Главное меню"),
         )
         return TP2
@@ -229,7 +230,7 @@ def ask_size_tp(update, context):
         context.user_data[3] = sizes
         update.message.reply_text("Укажите размер")
         return TP3
-    size = False
+    size = 0
     context.user_data[4] = size
     update.message.reply_text("Введите цену")
     return TP4
@@ -239,25 +240,24 @@ def ask_price_tp(update, context):
     """ Сверяем размер товара с размером, переданным пользователем.
         Спрашиваем цену, при достижении которой оповещать.
     """
-    size_value = update.message.text
-    size = utils.get_size_from_user(size_value)
-    context.user_data[4] = size
     sizes = context.user_data[3]
-    if size not in sizes:
+    size = validate_size(update.message.text, sizes)
+    # если введенное значение не корректно
+    if size is None:
         update.message.reply_text(
-            text="Пожалуйста введите корректный размер или нажмите 'Отмена'",
+            text='Пожалуйста введите корректный размер или нажмите "Отмена"',
             reply_markup=get_keyboard_cancel("Отмена")
         )
         return TP3
     # если этого размера нет
     if not sizes[size]:
         update.message.reply_text(
-            text="Сейчас этого размера нет. "
-                 "Можете отследить появление через"
-                 " 'Главное меню' или выбрать другой размер",
+            text='Сейчас этого размера нет. Можете отследить появление '
+                 'через "Главное меню" или выбрать другой размер',
             reply_markup=get_keyboard_cancel("Главное меню"),
         )
         return TP3
+    context.user_data[4] = size
     update.message.reply_text("Введите цену")
     return TP4
 
@@ -273,7 +273,7 @@ def get_info_tp(update, context):
     correct_price = validate_price(item_price, price)
     if not correct_price:
         update.message.reply_text(
-            text="Пожалуйста введите корректную цену или нажмите 'Отмена'",
+            text='Пожалуйста введите корректную цену или нажмите "Отмена"',
             reply_markup=get_keyboard_cancel("Отмена"),
         )
         return TP4
@@ -337,7 +337,7 @@ def ask_size_te(update, context):
             sizes_flag = [sizes[element] for element in sizes]
             if all(sizes_flag):
                 update.message.reply_text(
-                    text="Товар со всеми размерами в наличии. Перейдите в 'Главное меню'",
+                    text='Товар со всеми размерами в наличии. Перейдите в "Главное меню"',
                     reply_markup=get_keyboard_cancel("Главное меню"),
                 )
                 return TE2
@@ -347,7 +347,7 @@ def ask_size_te(update, context):
             return TE3
         # если без размеров
         update.message.reply_text(
-            text="Товар есть в наличии. Перейдите в 'Главное меню'",
+            text='Товар в наличии. Перейдите в "Главное меню"',
             reply_markup=get_keyboard_cancel("Главное меню"),
         )
         return TE2
@@ -382,20 +382,20 @@ def ask_size_te(update, context):
 
 def get_info_te(update, context):
     """ Собираем воедино полученные данные, сохраняем в БД. """
-    size_value = update.message.text
-    size = utils.get_size_from_user(size_value)
     sizes = context.user_data[2]
+    answer = update.message.text
+    size = validate_size(answer, sizes)
     # если введенное значение не корректно
-    if size not in sizes:
+    if size is None:
         update.message.reply_text(
-            text="Пожалуйста введите корректный размер или нажмите 'Отмена'",
+            text='Пожалуйста введите корректный размер или нажмите "Отмена"',
             reply_markup=get_keyboard_cancel("Отмена")
         )
         return TE3
     # если такой размер есть в наличии
     if sizes[size]:
         update.message.reply_text(
-            text="Размер есть в наличии. Перейдите в 'Главное меню'",
+            text='Размер есть в наличии. Перейдите в "Главное меню"',
             reply_markup=get_keyboard_cancel("Главное меню"),
         )
         return TE3
@@ -436,12 +436,14 @@ def show_items(update, context):
     items = get_items(external_id)
     if not items:
         query.message.reply_text(
-            text="Ваш список пока пуст. Перейдите в 'Главное меню'",
+            text='Ваш список пока пуст. Перейдите в "Главное меню"',
             reply_markup=get_keyboard_cancel("Главное меню"),
         )
         return FIRST
     items_text = utils.get_text_with_items(items)
-    items_text.append("\nЕсли хотите удалить товар, запомните его ID и нажмите 'Удалить'")
+    items_text.append('\nПосмотреть товар можно кликнув по его названию. '
+                      'Если хотите что-либо удалить из списка, '
+                      'запомните его ID и нажмите "Удалить"')
     text = '\n'.join(items_text)
     query.edit_message_text(
         text=text,
@@ -466,10 +468,12 @@ def delete_item(update, context):
 def delete(update, context):
     answer = update.message.text
     external_id = update.message.chat_id
-    record_id = validate_item_id(external_id, answer)
+    items_id = [item[0] for item in get_items_id(external_id)]
+    # проверяем переданный ID
+    record_id = validate_item_id(answer, items_id)
     if record_id is None:
         update.message.reply_text(
-            text="Введите пожалуйста корректный ID или перейдите в 'Главное меню'",
+            text='Введите пожалуйста корректный ID или перейдите в "Главное меню"',
             reply_markup=get_keyboard_cancel("Главное меню"),
         )
         return DEL2
