@@ -76,7 +76,28 @@ def get_price_status(items):
     for item_id, profile, article, item_size, item_name, url, user_price in items:
         price = parser.get_price(article)
         sizes = parser.get_sizes(article)
-        if not sizes[item_size] or not price:
+        if not price:
+            discounted_goods.append((
+                profile,
+                item_id,
+                f"Товар пропал из продажи\n"
+                f"[{item_name}]({url})\n"
+                f"Артикул: {article}\n"
+            ))
+            continue
+        if sizes and sizes[item_size]:
+            if price <= user_price:
+                discounted_goods.append((
+                    profile,
+                    item_id,
+                    f"Цена достигла ожидаемой\n"
+                    f"[{item_name}]({url})"
+                    f"Артикул: {article}\n"
+                    f"Ожидаемая: {user_price}\n"
+                    f"Настоящая: {price}\n"
+                ))
+                continue
+        if sizes and not sizes[item_size]:
             discounted_goods.append((
                 profile,
                 item_id,
@@ -95,4 +116,6 @@ def get_price_status(items):
                 f"Ожидаемая: {user_price}\n"
                 f"Настоящая: {price}\n"
             ))
+            continue
     return discounted_goods
+
