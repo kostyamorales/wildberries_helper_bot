@@ -3,6 +3,7 @@ import os
 import logging
 import utils
 import parser
+import sqlite3
 
 from telegram import InlineKeyboardButton
 from telegram import InlineKeyboardMarkup
@@ -29,6 +30,51 @@ FIRST, TP2, TP3, TP4, TE2, TE3 = range(6)
 # DEL - delete_item
 # START - start_over
 TP, TE, SI, DEL, START = range(5)
+
+__connection = None
+
+
+def get_connection():
+    global __connection
+    if __connection is None:
+        __connection = sqlite3.connect("wb_bot.db", check_same_thread=False)
+    return __connection
+
+
+def init_db(force: bool = False):
+    """ Проверить что нужные таблицы существуют, иначе создать их
+        :param force: явно пересоздать все таблицы
+    """
+    conn = get_connection()
+    conn.execute("PRAGMA foreign_key=on")
+    c = conn.cursor()
+    if force:
+        c.execute("DROP TABLE IF EXISTS wb_bot")
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS item(
+            id          INTEGER PRIMARY KEY,
+            profile     INTEGER NOT NULL,
+            article     INTEGER NOT NULL,
+            item_size   TEXT,
+            item_name   TEXT,
+            url         TEXT NOT NULL,
+            existence   INTEGER,
+            user_price  INTEGER,
+            FOREIGN KEY (profile) REFERENCES user(external_id)
+        )
+    """)
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS user(
+        id              INTEGER PRIMARY KEY,
+        external_id     INTEGER NOT NULL,
+        user_name       TEXT,
+        CONSTRAINT chat_id_unique UNIQUE (external_id)
+        )
+    """)
+
+    conn.commit()
 
 
 def get_base_inline_keyboard():
@@ -145,7 +191,6 @@ def get_info_tp(update, context):
             reply_markup=get_keyboard_cancel("Отмена"),
         )
         return TP4
-    # TODO здесь нужно сохранить в БД
     update.message.reply_text(
         text="Товар добавлен в ваш список",
         reply_markup=get_base_inline_keyboard(),
@@ -246,7 +291,12 @@ def get_info_te(update, context):
 
 def show_items(update, context):
     """ Смотрим свой список товаров. """
-    pass
+    query = update.callback_query
+    query.answer()
+    # узнаём данные пользователя
+    external_id = query.message.chat_id
+    name = query.message.chat.username
+    # TODO запрос в БД по id и получение товаров
 
 
 def delete_item(update, context):
@@ -255,6 +305,7 @@ def delete_item(update, context):
 
 
 def main():
+    init_db()
     load_dotenv()
     updater = Updater(token=os.getenv("TG_TOKEN"))
     dp = updater.dispatcher
