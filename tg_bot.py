@@ -280,6 +280,7 @@ def ask_size_te(update, context):
             reply_markup=get_keyboard_cancel("Отмена"),
         )
         return TE2
+    context.user_data[1] = article
     # проверяем с размерами или без
     sizes = parser.get_sizes(article)
     # проверяем наличие товара
@@ -297,7 +298,7 @@ def ask_size_te(update, context):
                 )
                 return TE2
             # если не все размеры в наличии
-            context.user_data[1] = sizes
+            context.user_data[2] = sizes
             update.message.reply_text("Укажите размер")
             return TE3
         # если без размеров
@@ -309,11 +310,25 @@ def ask_size_te(update, context):
     # если товара нет в наличии
     # если с размерами
     if sizes:
-        context.user_data[1] = sizes
+        context.user_data[2] = sizes
         update.message.reply_text("Укажите размер")
         return TE3
     # если без размеров
-    # TODO здесь нужно сохранить в БД
+    external_id = update.message.chat_id
+    name = update.message.chat.username
+    # проверяем есть ли такой user, если нет добавляем
+    if not get_user_record(external_id):
+        add_user_record(external_id, name)
+    # добавляем в БД
+    add_item_record(
+        profile=external_id,
+        article=article,
+        item_size=0,
+        item_name=parser.get_brand_and_name(article),
+        url=parser.get_url(article),
+        existence=0,
+        user_price=0,
+    )
     update.message.reply_text(
         text="Товар добавлен в ваш список",
         reply_markup=get_base_inline_keyboard(),
@@ -325,7 +340,7 @@ def get_info_te(update, context):
     """ Собираем воедино полученные данные, сохраняем в БД. """
     size_value = update.message.text
     size = utils.get_size_from_user(size_value)
-    sizes = context.user_data[1]
+    sizes = context.user_data[2]
     # если введенное значение не корректно
     if size not in sizes:
         update.message.reply_text(
@@ -341,7 +356,22 @@ def get_info_te(update, context):
         )
         return TE3
     # если запрашиваемого  размера нет
-    # TODO здесь нужно сохранить в БД
+    external_id = update.message.chat_id
+    name = update.message.chat.username
+    # проверяем есть ли такой user, если нет добавляем
+    if not get_user_record(external_id):
+        add_user_record(external_id, name)
+    # добавляем в БД
+    article = context.user_data[1]
+    add_item_record(
+        profile=update.message.chat_id,
+        article=article,
+        item_size=size,
+        item_name=parser.get_brand_and_name(article),
+        url=parser.get_url(article),
+        existence=0,
+        user_price=0,
+    )
     update.message.reply_text(
         text="Товар добавлен в ваш список",
         reply_markup=get_base_inline_keyboard(),
