@@ -3,6 +3,7 @@ import os
 import logging
 import utils
 import sqlite3
+import datetime
 
 from telegram import InlineKeyboardButton
 from telegram import InlineKeyboardMarkup
@@ -130,6 +131,7 @@ def get_items(external_id):
 
 
 def get_items_id(external_id):
+    """ Получаем id всех товаров из списка пользователя"""
     conn = get_connection()
     c = conn.cursor()
     try:
@@ -143,11 +145,25 @@ def get_items_id(external_id):
 
 
 def delete_entry(record_id):
-    """ Удаляет запись из БД """
+    """ Удаляем запись из БД """
     conn = get_connection()
     c = conn.cursor()
     c.execute("DELETE FROM item WHERE id == ?", (record_id,))
     conn.commit()
+
+
+def get_price_tracking_goods():
+    """ Из БД достаём товары с отслеживаемой ценой """
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        return c.execute("""
+        SELECT id, profile, article, item_size, item_name, url, user_price
+        FROM item
+        WHERE existence == ?
+        """, (True, )).fetchall()
+    except sqlite3.OperationalError:
+        return
 
 
 def get_base_inline_keyboard():
@@ -485,11 +501,36 @@ def delete(update, context):
     return FIRST
 
 
+def handle_daily_price_changes(context):
+    """ Срабатывает по заданному времени.
+        Сравнивает данные из БД с ценами на данный момент,
+        и в случае снижения цены до указанной или пропажи
+        товара из продажи отправляет соответствующее уведомление
+    """
+    items = get_price_tracking_goods()
+    for profile, item_id, text in utils.get_price_status(items):
+        delete_entry(item_id)
+        context.bot.send_message(chat_id=profile, text=text)
+
+
+def handle_daily_goods_appearances(context):
+    """ Срабатывает по заданному времени.
+        Проверяет появление отслеживаемых товаров, отправляет
+        уведомление пользователю
+    """
+    pass
+
+
 def main():
     init_db()
     load_dotenv()
     updater = Updater(token=os.getenv("TG_TOKEN"))
     dp = updater.dispatcher
+    jq = updater.job_queue
+    # TODO продумать время ежедневных запусков
+    # московское время минус 3 часа
+    jq.run_daily(handle_daily_price_changes, datetime.time(15, 52, 00))
+    jq.run_daily(handle_daily_goods_appearances, datetime.time(11, 34, 00))
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],

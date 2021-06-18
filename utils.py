@@ -1,3 +1,6 @@
+import parser
+
+
 def get_thing_sizes(block_sizes):
     sizes = {}
     for block in block_sizes:
@@ -66,3 +69,30 @@ def get_text_with_items(items):
         )
         continue
     return items_text
+
+
+def get_price_status(items):
+    discounted_goods = []
+    for item_id, profile, article, item_size, item_name, url, user_price in items:
+        price = parser.get_price(article)
+        sizes = parser.get_sizes(article)
+        if not sizes[item_size] or not price:
+            discounted_goods.append((
+                profile,
+                item_id,
+                f"Товар пропал из продажи\n"
+                f"[{item_name}]({url})\n"
+                f"Артикул: {article}\n"
+            ))
+            continue
+        if price <= user_price:
+            discounted_goods.append((
+                profile,
+                item_id,
+                f"Цена достигла ожидаемой\n"
+                f"[{item_name}]({url})"
+                f"Артикул: {article}\n"
+                f"Ожидаемая: {user_price}\n"
+                f"Настоящая: {price}\n"
+            ))
+    return discounted_goods
