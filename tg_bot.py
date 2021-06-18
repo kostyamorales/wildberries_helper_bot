@@ -2,11 +2,11 @@ from dotenv import load_dotenv
 import os
 import logging
 import utils
-import parser
 import sqlite3
 
 from telegram import InlineKeyboardButton
 from telegram import InlineKeyboardMarkup
+from telegram import ParseMode
 
 from telegram.ext import Updater
 from telegram.ext import CommandHandler
@@ -42,7 +42,7 @@ def get_connection():
 
 
 def init_db(force: bool = False):
-    """ Проверить что нужные таблицы существуют, иначе создать их
+    """ Проверяем что нужные таблицы существуют, иначе создаём их
         :param force: явно пересоздать все таблицы
     """
     conn = get_connection()
@@ -86,13 +86,13 @@ def get_user_record(external_id):
         SELECT external_id
         FROM user
         WHERE external_id == ?
-        """, (external_id, )).fetchall()
+        """, (external_id,)).fetchall()
     except sqlite3.OperationalError:
         return
 
 
 def add_user_record(external_id, user_name):
-    """ Делает запись в user в БД
+    """ Делаем запись в user в БД
     """
     conn = get_connection()
     c = conn.cursor()
@@ -104,7 +104,7 @@ def add_user_record(external_id, user_name):
 
 
 def add_item_record(profile, article, item_size, item_name, url, existence, user_price):
-    """ Делает запись в item в БД
+    """ Делаем запись в item в БД
     """
     conn = get_connection()
     c = conn.cursor()
@@ -113,6 +113,20 @@ def add_item_record(profile, article, item_size, item_name, url, existence, user
     VALUES (?, ?, ?, ?, ?, ?, ?)
     """, (profile, article, item_size, item_name, url, existence, user_price))
     conn.commit()
+
+
+def get_items(external_id):
+    """ По external_id достаём все товары пользователя """
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        return c.execute("""
+        SELECT id, article, item_size, item_name, url, existence, user_price
+        FROM item
+        WHERE profile == ?
+        """, (external_id,)).fetchall()
+    except sqlite3.OperationalError:
+        return
 
 
 def get_base_inline_keyboard():
@@ -128,6 +142,15 @@ def get_base_inline_keyboard():
 def get_keyboard_cancel(button_name):
     """ Получаем клавиатуру перехода в главное меню. """
     keyboard = [[InlineKeyboardButton(button_name, callback_data=str(START))]]
+    return InlineKeyboardMarkup(keyboard)
+
+
+def get_keyboard_delete_in_show_items():
+    """ Получаем клавиатуру перехода в главное меню. """
+    keyboard = [
+        [InlineKeyboardButton("Удалить", callback_data=str(DEL))],
+        [InlineKeyboardButton("Главное меню", callback_data=str(START))],
+    ]
     return InlineKeyboardMarkup(keyboard)
 
 
@@ -386,12 +409,33 @@ def show_items(update, context):
     # узнаём данные пользователя
     external_id = query.message.chat_id
     name = query.message.chat.username
-    # TODO запрос в БД по id и получение товаров
+    # если нет такого user, создаём
+    if not get_user_record(external_id):
+        add_user_record(external_id, name)
+    items = get_items(external_id)
+    if not items:
+        query.message.reply_text(
+            text="Ваш список пока пуст. Перейдите в 'Главное меню'",
+            reply_markup=get_keyboard_cancel("Главное меню"),
+        )
+        return FIRST
+    items_text = utils.get_text_with_items(items)
+    items_text.append("\nЕсли хотите удалить товар, запомните его ID и нажмите 'Удалить'")
+    text = '\n'.join(items_text)
+    query.edit_message_text(
+        text=text,
+        reply_markup=get_keyboard_delete_in_show_items(),
+        parse_mode=ParseMode.MARKDOWN,
+        disable_web_page_preview=True
+    )
+    return FIRST
 
 
 def delete_item(update, context):
     """ Удаляем товар из БД. """
-    pass
+    query = update.callback_query
+    query.answer()
+    query.message.reply_text("Здесь будет произведено удаление")
 
 
 def main():
@@ -407,7 +451,8 @@ def main():
                 CallbackQueryHandler(track_price, pattern='^' + str(TP) + '$'),
                 CallbackQueryHandler(track_existence, pattern='^' + str(TE) + '$'),
                 CallbackQueryHandler(show_items, pattern='^' + str(SI) + '$'),
-                # CallbackQueryHandler(delete_item, pattern='^' + str(DEL) + '$'),
+                CallbackQueryHandler(delete_item, pattern='^' + str(DEL) + '$'),
+                CallbackQueryHandler(start_over, pattern='^' + str(START) + '$'),
             ],
             # TP - track price
             TP2: [
