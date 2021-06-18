@@ -78,6 +78,7 @@ def init_db(force: bool = False):
 
 
 def get_user_record(external_id):
+    """ Получаем profile """
     conn = get_connection()
     c = conn.cursor()
     try:
@@ -168,6 +169,7 @@ def ask_size_tp(update, context):
             reply_markup=get_keyboard_cancel("Отмена"),
         )
         return TP2
+    context.user_data[1] = article
     # проверяем, что товар в продаже
     item_price = validate_item_price(article)
     if item_price is None:
@@ -176,13 +178,15 @@ def ask_size_tp(update, context):
             reply_markup=get_keyboard_cancel("Главное меню"),
         )
         return TP2
-    context.user_data[1] = item_price
+    context.user_data[2] = item_price
     # проверяем существуют ли у товара размеры
     sizes = parser.get_sizes(article)
     if sizes:
-        context.user_data[2] = sizes
+        context.user_data[3] = sizes
         update.message.reply_text("Укажите размер")
         return TP3
+    size = False
+    context.user_data[4] = size
     update.message.reply_text("Введите цену")
     return TP4
 
@@ -193,7 +197,8 @@ def ask_price_tp(update, context):
     """
     size_value = update.message.text
     size = utils.get_size_from_user(size_value)
-    sizes = context.user_data[2]
+    context.user_data[4] = size
+    sizes = context.user_data[3]
     if size not in sizes:
         update.message.reply_text(
             text="Пожалуйста введите корректный размер или нажмите 'Отмена'",
@@ -220,7 +225,7 @@ def get_info_tp(update, context):
     # получить цену
     # проверить полученные данные
     price = update.message.text
-    item_price = context.user_data[1]
+    item_price = context.user_data[2]
     correct_price = validate_price(item_price, price)
     if not correct_price:
         update.message.reply_text(
@@ -228,6 +233,24 @@ def get_info_tp(update, context):
             reply_markup=get_keyboard_cancel("Отмена"),
         )
         return TP4
+    # сохраняем в БД
+    article = context.user_data[1]
+    external_id = update.message.chat_id
+    name = update.message.chat.username
+    # проверяем есть ли такой user, если нет добавляем
+    if not get_user_record(external_id):
+        add_user_record(external_id, name)
+    # добавляем запись item
+    add_item_record(
+        profile=update.message.chat_id,
+        article=article,
+        item_size=context.user_data[4],
+        item_name=parser.get_brand_and_name(article),
+        url=parser.get_url(article),
+        existence=1,
+        user_price=price,
+    )
+    # TODO каким будет вывод пользователю
     update.message.reply_text(
         text="Товар добавлен в ваш список",
         reply_markup=get_base_inline_keyboard(),
