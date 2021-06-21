@@ -3,7 +3,6 @@ import os
 import logging
 import utils
 import sqlite3
-import datetime
 
 from telegram import InlineKeyboardButton
 from telegram import InlineKeyboardMarkup
@@ -79,7 +78,7 @@ def init_db(force: bool = False):
 
 
 def get_user_record(external_id):
-    """ Получаем profile """
+    """ Получаем user если он существует """
     conn = get_connection()
     c = conn.cursor()
     try:
@@ -93,8 +92,7 @@ def get_user_record(external_id):
 
 
 def add_user_record(external_id, user_name):
-    """ Делаем запись в user в БД
-    """
+    """ Делаем запись в user в БД """
     conn = get_connection()
     c = conn.cursor()
     c.execute("""
@@ -105,8 +103,7 @@ def add_user_record(external_id, user_name):
 
 
 def add_item_record(profile, article, item_size, item_name, url, existence, user_price):
-    """ Делаем запись в item в БД
-    """
+    """ Делаем запись в item в БД """
     conn = get_connection()
     c = conn.cursor()
     c.execute("""
@@ -166,6 +163,20 @@ def get_price_tracking_goods():
         return
 
 
+def get_tracking_goods():
+    """ Из БД достаём товары которые в листе ожидания """
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        return c.execute("""
+        SELECT id, profile, article, item_size, item_name, url, user_price
+        FROM item
+        WHERE existence == ?
+        """, (False, )).fetchall()
+    except sqlite3.OperationalError:
+        return
+
+
 def get_base_inline_keyboard():
     """ Получаем базовую клавиатуру для главного меню. """
     keyboard = [
@@ -183,7 +194,7 @@ def get_keyboard_cancel(button_name):
 
 
 def get_keyboard_delete_in_show_items():
-    """ Получаем клавиатуру перехода в главное меню. """
+    """ Получаем клавиатуру перехода в главное меню с кнопкой удалить. """
     keyboard = [
         [InlineKeyboardButton("Удалить", callback_data=str(DEL))],
         [InlineKeyboardButton("Главное меню", callback_data=str(START))],
@@ -234,7 +245,7 @@ def ask_size_tp(update, context):
     item_price = validate_item_price(article)
     if item_price is None:
         update.message.reply_text(
-            text='Нет в продаже. Пожалуйста введите корректный артикул или '
+            text='Товара нет в продаже. Пожалуйста введите корректный артикул или '
                  'можете отследить появление этого товара через "Главное меню"',
             reply_markup=get_keyboard_cancel("Главное меню"),
         )
@@ -268,8 +279,8 @@ def ask_price_tp(update, context):
     # если этого размера нет
     if not sizes[size]:
         update.message.reply_text(
-            text='Сейчас этого размера нет. Можете отследить появление '
-                 'через "Главное меню" или выбрать другой размер',
+            text='Размера нет в продаже. Пожалуйста введите корректный размер или '
+                 'можете отследить появление данного размера через "Главное меню"',
             reply_markup=get_keyboard_cancel("Главное меню"),
         )
         return TP3
@@ -457,9 +468,9 @@ def show_items(update, context):
         )
         return FIRST
     items_text = utils.get_text_with_items(items)
-    items_text.append('\nПосмотреть товар можно кликнув по его названию. '
-                      'Если хотите что-либо удалить из списка, '
-                      'запомните его ID и нажмите "Удалить"')
+    items_text.append('\nПосмотреть страницу с товаром можно кликнув по его названию. '
+                      'Если хотите что-либо удалить из списка, запомните его ID '
+                      'и нажмите "Удалить"')
     text = '\n'.join(items_text)
     query.edit_message_text(
         text=text,
@@ -503,22 +514,35 @@ def delete(update, context):
 
 def handle_daily_price_changes(context):
     """ Срабатывает по заданному времени.
-        Сравнивает данные из БД с ценами на данный момент,
+        Сравниваем данные из БД с ценами на данный момент,
         и в случае снижения цены до указанной или пропажи
         товара из продажи отправляет соответствующее уведомление
     """
     items = get_price_tracking_goods()
     for profile, item_id, text in utils.get_price_status(items):
         delete_entry(item_id)
-        context.bot.send_message(chat_id=profile, text=text)
+        context.bot.send_message(
+            chat_id=profile,
+            text=text,
+            parse_mode=ParseMode.MARKDOWN,
+            disable_web_page_preview=True
+        )
 
 
 def handle_daily_goods_appearances(context):
     """ Срабатывает по заданному времени.
-        Проверяет появление отслеживаемых товаров, отправляет
+        Проверяем появление отслеживаемых товаров, отправляет
         уведомление пользователю
     """
-    pass
+    items = get_tracking_goods()
+    for profile, item_id, text in utils.get_appeared_goods(items):
+        delete_entry(item_id)
+        context.bot.send_message(
+            chat_id=profile,
+            text=text,
+            parse_mode=ParseMode.MARKDOWN,
+            disable_web_page_preview=True
+        )
 
 
 def main():
@@ -527,10 +551,9 @@ def main():
     updater = Updater(token=os.getenv("TG_TOKEN"))
     dp = updater.dispatcher
     jq = updater.job_queue
-    # TODO продумать время ежедневных запусков
-    # московское время минус 3 часа
-    jq.run_daily(handle_daily_price_changes, datetime.time(15, 52, 00))
-    jq.run_daily(handle_daily_goods_appearances, datetime.time(11, 34, 00))
+    # запуск проверки товаров
+    jq.run_repeating(handle_daily_price_changes, 3600)
+    jq.run_repeating(handle_daily_goods_appearances, 3600)
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
