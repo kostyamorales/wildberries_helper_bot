@@ -204,8 +204,9 @@ def get_keyboard_delete_in_show_items():
 
 def start(update, context):
     update.message.reply_text(
-        text="Выберите действие:",
+        text="*Выберите действие:*",
         reply_markup=get_base_inline_keyboard(),
+        parse_mode=ParseMode.MARKDOWN,
     )
     return FIRST
 
@@ -214,8 +215,9 @@ def start_over(update, context):
     query = update.callback_query
     query.answer()
     query.edit_message_text(
-        text="Выберите действие:",
-        reply_markup=get_base_inline_keyboard()
+        text="*Выберите действие:*",
+        reply_markup=get_base_inline_keyboard(),
+        parse_mode=ParseMode.MARKDOWN,
     )
     return FIRST
 
@@ -225,7 +227,8 @@ def track_price(update, context):
     query = update.callback_query
     query.answer()
     query.edit_message_text(
-        text="Введите артикул",
+        text="*Введите артикул*",
+        parse_mode=ParseMode.MARKDOWN,
     )
     return TP2
 
@@ -236,8 +239,9 @@ def ask_size_tp(update, context):
     article = validate_article(update.message.text)
     if article is None:
         update.message.reply_text(
-            text='Пожалуйста введите корректный артикул или нажмите "Отмена"',
+            text='Пожалуйста введите корректный артикул или нажмите *"Отмена"*',
             reply_markup=get_keyboard_cancel("Отмена"),
+            parse_mode=ParseMode.MARKDOWN,
         )
         return TP2
     context.user_data[1] = article
@@ -246,8 +250,9 @@ def ask_size_tp(update, context):
     if item_price is None:
         update.message.reply_text(
             text='Товара нет в продаже. Пожалуйста введите корректный артикул или '
-                 'можете отследить появление этого товара через "Главное меню"',
+                 'можете отследить появление этого товара через *"Главное меню"*',
             reply_markup=get_keyboard_cancel("Главное меню"),
+            parse_mode=ParseMode.MARKDOWN,
         )
         return TP2
     context.user_data[2] = item_price
@@ -255,11 +260,17 @@ def ask_size_tp(update, context):
     sizes = parser.get_sizes(article)
     if sizes:
         context.user_data[3] = sizes
-        update.message.reply_text("Укажите размер")
+        update.message.reply_text(
+            text="*Укажите размер*",
+            parse_mode=ParseMode.MARKDOWN,
+        )
         return TP3
     size = 0
     context.user_data[4] = size
-    update.message.reply_text("Введите цену")
+    update.message.reply_text(
+        text="*Введите цену*",
+        parse_mode=ParseMode.MARKDOWN,
+    )
     return TP4
 
 
@@ -272,20 +283,25 @@ def ask_price_tp(update, context):
     # если введенное значение не корректно
     if size is None:
         update.message.reply_text(
-            text='Пожалуйста введите корректный размер или нажмите "Отмена"',
-            reply_markup=get_keyboard_cancel("Отмена")
+            text='Пожалуйста введите корректный размер или нажмите *"Отмена"*',
+            reply_markup=get_keyboard_cancel("Отмена"),
+            parse_mode=ParseMode.MARKDOWN,
         )
         return TP3
     # если этого размера нет
     if not sizes[size]:
         update.message.reply_text(
             text='Размера нет в продаже. Пожалуйста введите корректный размер или '
-                 'можете отследить появление данного размера через "Главное меню"',
+                 'можете отследить появление данного размера через *"Главное меню"*',
             reply_markup=get_keyboard_cancel("Главное меню"),
+            parse_mode=ParseMode.MARKDOWN,
         )
         return TP3
     context.user_data[4] = size
-    update.message.reply_text("Введите цену")
+    update.message.reply_text(
+        text="*Введите цену*",
+        parse_mode=ParseMode.MARKDOWN,
+    )
     return TP4
 
 
@@ -300,8 +316,9 @@ def get_info_tp(update, context):
     correct_price = validate_price(item_price, price)
     if not correct_price:
         update.message.reply_text(
-            text='Пожалуйста введите корректную цену или нажмите "Отмена"',
+            text='Пожалуйста введите корректную цену или нажмите *"Отмена"*',
             reply_markup=get_keyboard_cancel("Отмена"),
+            parse_mode=ParseMode.MARKDOWN,
         )
         return TP4
     # сохраняем в БД
@@ -323,8 +340,10 @@ def get_info_tp(update, context):
     )
     # TODO каким будет вывод пользователю
     update.message.reply_text(
-        text="Товар добавлен в ваш список",
+        text="*Товар добавлен в ваш список.\n"
+             "Выберите действие:*",
         reply_markup=get_base_inline_keyboard(),
+        parse_mode=ParseMode.MARKDOWN,
     )
     return FIRST
 
@@ -334,7 +353,8 @@ def track_existence(update, context):
     query = update.callback_query
     query.answer()
     query.edit_message_text(
-        text="Введите артикул",
+        text="*Введите артикул*",
+        parse_mode=ParseMode.MARKDOWN,
     )
     return TE2
 
@@ -347,8 +367,9 @@ def ask_size_te(update, context):
     # если артикул не существует
     if article is None:
         update.message.reply_text(
-            text="Пожалуйста введите корректный артикул или нажмите 'Отмена'",
+            text='Пожалуйста введите корректный артикул или нажмите *"Отмена"*',
             reply_markup=get_keyboard_cancel("Отмена"),
+            parse_mode=ParseMode.MARKDOWN,
         )
         return TE2
     context.user_data[1] = article
@@ -364,25 +385,33 @@ def ask_size_te(update, context):
             sizes_flag = [sizes[element] for element in sizes]
             if all(sizes_flag):
                 update.message.reply_text(
-                    text='Товар со всеми размерами в наличии. Перейдите в "Главное меню"',
+                    text='Товар со всеми размерами в наличии. Перейдите в *"Главное меню"*',
                     reply_markup=get_keyboard_cancel("Главное меню"),
+                    parse_mode=ParseMode.MARKDOWN,
                 )
                 return TE2
             # если не все размеры в наличии
             context.user_data[2] = sizes
-            update.message.reply_text("Укажите размер")
+            update.message.reply_text(
+                text="*Укажите размер*",
+                parse_mode=ParseMode.MARKDOWN,
+            )
             return TE3
         # если без размеров
         update.message.reply_text(
-            text='Товар в наличии. Перейдите в "Главное меню"',
+            text='Товар в наличии. Перейдите в *"Главное меню"*',
             reply_markup=get_keyboard_cancel("Главное меню"),
+            parse_mode=ParseMode.MARKDOWN,
         )
         return TE2
     # если товара нет в наличии
     # если с размерами
     if sizes:
         context.user_data[2] = sizes
-        update.message.reply_text("Укажите размер")
+        update.message.reply_text(
+            text="*Укажите размер*",
+            parse_mode=ParseMode.MARKDOWN,
+        )
         return TE3
     # если без размеров
     external_id = update.message.chat_id
@@ -401,8 +430,10 @@ def ask_size_te(update, context):
         user_price=0,
     )
     update.message.reply_text(
-        text="Товар добавлен в ваш список",
+        text="*Товар добавлен в ваш список.\n"
+             "Выберите действие:*",
         reply_markup=get_base_inline_keyboard(),
+        parse_mode=ParseMode.MARKDOWN,
     )
     return FIRST
 
@@ -415,15 +446,17 @@ def get_info_te(update, context):
     # если введенное значение не корректно
     if size is None:
         update.message.reply_text(
-            text='Пожалуйста введите корректный размер или нажмите "Отмена"',
-            reply_markup=get_keyboard_cancel("Отмена")
+            text='Пожалуйста введите корректный размер или нажмите *"Отмена"*',
+            reply_markup=get_keyboard_cancel("Отмена"),
+            parse_mode=ParseMode.MARKDOWN,
         )
         return TE3
     # если такой размер есть в наличии
     if sizes[size]:
         update.message.reply_text(
-            text='Размер есть в наличии. Перейдите в "Главное меню"',
+            text='Размер есть в наличии. Перейдите в *"Главное меню"*',
             reply_markup=get_keyboard_cancel("Главное меню"),
+            parse_mode=ParseMode.MARKDOWN,
         )
         return TE3
     # если запрашиваемого  размера нет
@@ -444,8 +477,10 @@ def get_info_te(update, context):
         user_price=0,
     )
     update.message.reply_text(
-        text="Товар добавлен в ваш список",
+        text="*Товар добавлен в ваш список.\n"
+             "Выберите действие:*",
         reply_markup=get_base_inline_keyboard(),
+        parse_mode=ParseMode.MARKDOWN,
     )
     return FIRST
 
@@ -463,14 +498,15 @@ def show_items(update, context):
     items = get_items(external_id)
     if not items:
         query.message.reply_text(
-            text='Ваш список пока пуст. Перейдите в "Главное меню"',
+            text='Ваш список пока пуст. Перейдите в *"Главное меню"*',
             reply_markup=get_keyboard_cancel("Главное меню"),
+            parse_mode=ParseMode.MARKDOWN,
         )
         return FIRST
     items_text = utils.get_text_with_items(items)
     items_text.append('\nПосмотреть страницу с товаром можно кликнув по его названию. '
-                      'Если хотите что-либо удалить из списка, запомните его ID '
-                      'и нажмите "Удалить"')
+                      'Если хотите что-либо удалить из списка, *запомните его ID* '
+                      'и нажмите *"Удалить"*')
     text = '\n'.join(items_text)
     query.edit_message_text(
         text=text,
@@ -486,8 +522,9 @@ def delete_item(update, context):
     query = update.callback_query
     query.answer()
     query.edit_message_text(
-        text="Введите ID товара",
+        text="*Введите ID товара*",
         reply_markup=get_keyboard_cancel("Главное меню"),
+        parse_mode=ParseMode.MARKDOWN,
     )
     return DEL2
 
@@ -500,14 +537,16 @@ def delete(update, context):
     record_id = validate_item_id(answer, items_id)
     if record_id is None:
         update.message.reply_text(
-            text='Введите пожалуйста корректный ID или перейдите в "Главное меню"',
+            text='Введите пожалуйста корректный *ID* или перейдите в *"Главное меню"*',
             reply_markup=get_keyboard_cancel("Главное меню"),
+            parse_mode=ParseMode.MARKDOWN,
         )
         return DEL2
     delete_entry(record_id)
     update.message.reply_text(
-        text="Запись успешно удалена",
-        reply_markup=get_keyboard_cancel("Главное меню")
+        text="*Запись успешно удалена*",
+        reply_markup=get_keyboard_cancel("Главное меню"),
+        parse_mode=ParseMode.MARKDOWN,
     )
     return FIRST
 

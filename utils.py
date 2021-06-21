@@ -34,38 +34,38 @@ def get_text_with_items(items):
             # Приходится отсеивать товары без размера, сравнивая со строкой
             if item_size != '0':
                 items_text.append(
-                    "Отслеживание цены:\n"
+                    "*Отслеживание цены:*\n"
                     f"[{item_name}]({url})\n"
                     f"Артикул: {article}\n"
                     f"Размер: {item_size}\n"
                     f"Ожидаемая цена: {user_price}\n"
-                    f"ID товара: {item_id}\n"
+                    f"*ID* товара: {item_id}\n"
                 )
                 continue
             items_text.append(
-                "Отслеживание цены:\n"
+                "*Отслеживание цены:*\n"
                 f"[{item_name}]({url})\n"
                 f"Артикул: {article}\n"
                 f"Ожидаемая цена: {user_price}\n"
-                f"ID товара: {item_id}\n"
+                f"*ID* товара: {item_id}\n"
             )
             continue
         # размеры могут иметь буквенное обозначение, поэтому поле в БД TEXT
         # Приходится отсеивать товары без размера, сравнивая со строкой
         if item_size != '0':
             items_text.append(
-                "Отслеживание появления:\n"
+                "*Отслеживание появления:*\n"
                 f"[{item_name}]({url})\n"
                 f"Артикул: {article}\n"
                 f"Размер: {item_size}\n"
-                f"ID товара: {item_id}\n"
+                f"*ID* товара: {item_id}\n"
             )
             continue
         items_text.append(
-            "Отслеживание появления:\n"
+            "*Отслеживание появления:*\n"
             f"[{item_name}]({url})\n"
             f"Артикул: {article}\n"
-            f"ID товара: {item_id}\n"
+            f"*ID* товара: {item_id}\n"
         )
         continue
     return items_text
@@ -79,7 +79,7 @@ def get_price_status(items):
         template_good = (
             profile,
             item_id,
-            f"Цена достигла ожидаемой\n"
+            f"*Цена достигла ожидаемой*\n"
             f"[{item_name}]({url})"
             f"Артикул: {article}\n"
             f"Ожидаемая: {user_price}\n"
@@ -88,7 +88,7 @@ def get_price_status(items):
         template_bad = (
             profile,
             item_id,
-            f"Товар пропал из продажи\n"
+            f"*Товар пропал из продажи*\n"
             f"[{item_name}]({url})\n"
             f"Артикул: {article}\n"
         )
@@ -120,7 +120,7 @@ def get_appeared_goods(items):
         template = (
             profile,
             item_id,
-            "Товар появился в продаже\n"
+            "*Товар появился в продаже*\n"
             f"[{item_name}]({url})\n"
             f"Артикул: {article}\n"
             f"Цена: {price}"
