@@ -76,46 +76,61 @@ def get_price_status(items):
     for item_id, profile, article, item_size, item_name, url, user_price in items:
         price = parser.get_price(article)
         sizes = parser.get_sizes(article)
+        template_good = (
+            profile,
+            item_id,
+            f"Цена достигла ожидаемой\n"
+            f"[{item_name}]({url})"
+            f"Артикул: {article}\n"
+            f"Ожидаемая: {user_price}\n"
+            f"Настоящая: {price}\n"
+        )
+        template_bad = (
+            profile,
+            item_id,
+            f"Товар пропал из продажи\n"
+            f"[{item_name}]({url})\n"
+            f"Артикул: {article}\n"
+        )
         if not price:
-            discounted_goods.append((
-                profile,
-                item_id,
-                f"Товар пропал из продажи\n"
-                f"[{item_name}]({url})\n"
-                f"Артикул: {article}\n"
-            ))
+            discounted_goods.append(template_bad)
             continue
         if sizes and sizes[item_size]:
             if price <= user_price:
-                discounted_goods.append((
-                    profile,
-                    item_id,
-                    f"Цена достигла ожидаемой\n"
-                    f"[{item_name}]({url})"
-                    f"Артикул: {article}\n"
-                    f"Ожидаемая: {user_price}\n"
-                    f"Настоящая: {price}\n"
-                ))
+                discounted_goods.append(template_good)
                 continue
         if sizes and not sizes[item_size]:
-            discounted_goods.append((
-                profile,
-                item_id,
-                f"Товар пропал из продажи\n"
-                f"[{item_name}]({url})\n"
-                f"Артикул: {article}\n"
-            ))
+            discounted_goods.append(template_bad)
             continue
         if price <= user_price:
-            discounted_goods.append((
-                profile,
-                item_id,
-                f"Цена достигла ожидаемой\n"
-                f"[{item_name}]({url})"
-                f"Артикул: {article}\n"
-                f"Ожидаемая: {user_price}\n"
-                f"Настоящая: {price}\n"
-            ))
+            discounted_goods.append(template_good)
             continue
     return discounted_goods
 
+
+def get_appeared_goods(items):
+    """ Принимает в качестве аргумента товары, появление которых
+        отслеживается, проверяет их статус и возвращает список
+        кортежей (user_id, item_id, text) появившихся
+    """
+    appered_goods = []
+    for item_id, profile, article, item_size, item_name, url, user_price in items:
+        price = parser.get_price(article)
+        sizes = parser.get_sizes(article)
+        template = (
+            profile,
+            item_id,
+            "Товар появился в продаже\n"
+            f"[{item_name}]({url})\n"
+            f"Артикул: {article}\n"
+            f"Цена: {price}"
+        )
+        if not price:
+            continue
+        if not sizes:
+            appered_goods.append(template)
+            continue
+        if sizes and sizes[item_size]:
+            appered_goods.append(template)
+            continue
+    return appered_goods
