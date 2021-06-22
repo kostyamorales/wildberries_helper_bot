@@ -3,6 +3,7 @@ import os
 import logging
 import utils
 import sqlite3
+from logs_handler import MyLogsHandler
 
 from telegram import InlineKeyboardButton
 from telegram import InlineKeyboardMarkup
@@ -586,7 +587,6 @@ def handle_daily_goods_appearances(context):
 
 def main():
     init_db()
-    load_dotenv()
     updater = Updater(token=os.getenv("TG_TOKEN"))
     dp = updater.dispatcher
     jq = updater.job_queue
@@ -642,4 +642,13 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    load_dotenv()
+    tg_logs_token = os.getenv("TG_LOGS_TOKEN")
+    tg_chat_id = os.getenv("TG_CHAT_ID")
+    logger.addHandler(MyLogsHandler(tg_logs_token, tg_chat_id))
+    logger.info("Бот запущен")
+    while True:
+        try:
+            main()
+        except Exception as error:
+            logger.info(f"Бот упал с ошибкой, {error}")
