@@ -1,7 +1,7 @@
 # Бот отслеживает появление товаров и снижение цен на WILDBERRIES.
 ![](gif/preview.gif)
 
-Пример рабочего [бота](https://t.me/wildberries_helper_bot).
+Пример рабочего [бота](https://t.me/wb_assistant_bot).
 
 
 ## Подготовка к работе.
