@@ -33,7 +33,7 @@ def get_data(html):
 
 def get_brand_and_name(article):
     soup = get_data(get_html(get_url(article)))
-    brand_and_name = soup.select_one('div.brand-and-name').text.strip()
+    brand_and_name = soup.select_one('h1.same-part-kt__header').text.strip()
     if not brand_and_name:
         logger.error('no brand_and_name block')
     return brand_and_name
@@ -41,17 +41,17 @@ def get_brand_and_name(article):
 
 def get_price(article):
     soup = get_data(get_html(get_url(article)))
-    price = soup.select_one('div.inner-price')
+    price = soup.select_one('div.price-block__content')
     if not price:
         return
-    final_price = price.select_one('div.final-price-block').text
+    final_price = price.select_one('.price-block__final-price').text
     final_price = int(''.join(final_price.split()).replace('₽', ''))
     return final_price
 
 
 def get_sizes(article):
     soup = get_data(get_html(get_url(article)))
-    block_sizes = soup.select('div.size-list.j-size-list label')
+    block_sizes = soup.select('li.sizes-list__item')
     if not block_sizes:
         logger.error('no block_sizes')
         return
