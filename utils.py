@@ -5,7 +5,7 @@ def get_thing_sizes(block_sizes):
     sizes = {}
     for block in block_sizes:
         size = str(block).split('\n')[2]
-        s_value = size.replace('<span>', '').replace('</span>', '')
+        s_value = size.replace('<span class="sizes-list__size">', '').replace('</span>', '')
         # на случай если размеры у товара не предусмотрены
         if s_value == '0':
             return
